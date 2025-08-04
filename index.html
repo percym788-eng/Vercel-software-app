@@ -353,6 +353,13 @@
         async function checkHealth() {
             try {
                 const response = await fetch(`${API_BASE}/api/health`);
+                
+                // Check if response is actually JSON
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('Server returned HTML instead of JSON - API routing issue');
+                }
+                
                 const data = await response.json();
                 
                 const statusEl = document.getElementById('server-status');
