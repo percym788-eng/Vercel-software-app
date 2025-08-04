@@ -1,0 +1,44 @@
+# vercel.json
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/auth-server.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/",
+      "dest": "/index.html"
+    },
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/auth-server.js"
+    }
+  ],
+  "functions": {
+    "api/auth-server.js": {
+      "maxDuration": 30
+    }
+  }
+}
+
+# package.json
+{
+  "name": "auth-server-vercel",
+  "version": "1.0.0",
+  "description": "Authentication server for Vercel deployment",
+  "main": "api/auth-server.js",
+  "scripts": {
+    "start": "node api/auth-server.js",
+    "dev": "node api/auth-server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
+  },
+  "engines": {
+    "node": ">=18.x"
+  }
+}
