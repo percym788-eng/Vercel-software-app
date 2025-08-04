@@ -1,20 +1,17 @@
 {
-  "name": "sat-auth-server",
+  "name": "auth-server-vercel",
   "version": "1.0.0",
-  "description": "SAT Helper Authentication Server",
-  "main": "auth-server.js",
+  "description": "Authentication server for Vercel deployment",
+  "main": "api/auth-server.js",
   "scripts": {
-    "start": "node auth-server.js",
-    "dev": "node auth-server.js"
+    "start": "node api/auth-server.js",
+    "dev": "node api/auth-server.js"
   },
   "dependencies": {
     "express": "^4.18.2",
     "cors": "^2.8.5"
   },
   "engines": {
-    "node": ">=14.0.0"
-  },
-  "keywords": ["sat", "helper", "authentication", "server"],
-  "author": "Your Name",
-  "license": "MIT"
+    "node": ">=18.x"
+  }
 }
