@@ -1,0 +1,20 @@
+{
+  "name": "sat-auth-server",
+  "version": "1.0.0",
+  "description": "SAT Helper Authentication Server",
+  "main": "auth-server.js",
+  "scripts": {
+    "start": "node auth-server.js",
+    "dev": "node auth-server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "keywords": ["sat", "helper", "authentication", "server"],
+  "author": "Your Name",
+  "license": "MIT"
+}
