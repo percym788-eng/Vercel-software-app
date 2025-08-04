@@ -349,5 +349,7 @@ app.get('/admin/sessions', requireAdmin, (req, res) => {
 // Initialize databases when module loads
 initDatabases();
 
-// Export for Vercel
-module.exports = app;
+// Export for Vercel serverless functions
+module.exports = (req, res) => {
+  return app(req, res);
+};
