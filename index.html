@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authentication Server</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border-radius: 50%;
+            margin: 0 auto 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            color: white;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        input[type="text"], input[type="password"], select {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e1e1e1;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        input[type="text"]:focus, input[type="password"]:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 15px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: #f8f9fa;
+            color: #333;
+            border: 2px solid #e9ecef;
+        }
+
+        .btn-secondary:hover {
+            background: #e9ecef;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .tabs {
+            display: flex;
+            margin-bottom: 30px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 5px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 12px;
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .tab.active {
+            background: white;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-online {
+            background: #28a745;
+        }
+
+        .status-offline {
+            background: #dc3545;
+        }
+
+        .user-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: left;
+        }
+
+        .user-info h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .user-info p {
+            margin-bottom: 8px;
+            color: #666;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🔐</div>
+        <h1>Auth Server</h1>
+        <p class="subtitle">Secure Authentication Portal</p>
+        
+        <div id="server-status" class="alert alert-error">
+            <span class="status-indicator status-offline"></span>
+            Checking server status...
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('login')">Login</button>
+            <button class="tab" onclick="switchTab('admin')">Admin</button>
+            <button class="tab" onclick="switchTab('status')">Status</button>
+        </div>
+
+        <!-- Login Tab -->
+        <div id="login-tab" class="tab-content active">
+            <form onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Login</button>
+            </form>
+
+            <div id="user-session" class="user-info hidden">
+                <h3>Session Active</h3>
+                <div id="session-details"></div>
+                <button onclick="handleLogout()" class="btn btn-secondary">Logout</button>
+            </div>
+        </div>
+
+        <!-- Admin Tab -->
+        <div id="admin-tab" class="tab-content">
+            <div id="admin-login">
+                <div class="form-group">
+                    <label for="admin-token">Admin Token</label>
+                    <input type="password" id="admin-token" placeholder="Enter admin token">
+                </div>
+                <button onclick="adminLogin()" class="btn btn-primary">Access Admin Panel</button>
+            </div>
+
+            <div id="admin-panel" class="hidden">
+                <h3>Admin Panel</h3>
+                
+                <div class="form-group">
+                    <label for="new-username">Create New User</label>
+                    <input type="text" id="new-username" placeholder="Username">
+                </div>
+                
+                <div class="form-group">
+                    <input type="password" id="new-password" placeholder="Password">
+                </div>
+                
+                <div class="form-group">
+                    <select id="access-type">
+                        <option value="trial">Trial</option>
+                        <option value="premium">Premium</option>
+                        <option value="unlimited">Unlimited</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <input type="number" id="max-usage" placeholder="Max Usage" value="1">
+                </div>
+                
+                <button onclick="createUser()" class="btn btn-primary">Create User</button>
+                <button onclick="loadUsers()" class="btn btn-secondary">View Users</button>
+                <button onclick="loadLogs()" class="btn btn-secondary">View Logs</button>
+                
+                <div id="admin-data"></div>
+            </div>
+        </div>
+
+        <!-- Status Tab -->
+        <div id="status-tab" class="tab-content">
+            <div id="server-info">
+                <h3>Server Information</h3>
+                <div id="detailed-status"></div>
+                <button onclick="checkHealth()" class="btn btn-secondary">Refresh Status</button>
+            </div>
+        </div>
+
+        <div id="message-area"></div>
+    </div>
+
+    <script>
+        // Configuration - Update this with your Vercel deployment URL
+        const API_BASE = window.location.origin; // Uses current domain
+        
+        let currentToken = localStorage.getItem('authToken');
+        let adminToken = localStorage.getItem('adminToken');
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            checkHealth();
+            if (currentToken) {
+                validateToken();
+            }
+        });
+
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Show selected tab
+            document.getElementById(tabName + '-tab').classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function showMessage(message, type = 'success') {
+            const messageArea = document.getElementById('message-area');
+            messageArea.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+            setTimeout(() => {
+                messageArea.innerHTML = '';
+            }, 5000);
+        }
+
+        async function checkHealth() {
+            try {
+                const response = await fetch(`${API_BASE}/api/health`);
+                const data = await response.json();
+                
+                const statusEl = document.getElementById('server-status');
+                const detailedStatusEl = document.getElementById('detailed-status');
+                
+                if (response.ok) {
+                    statusEl.innerHTML = '<span class="status-indicator status-online"></span>Server Online';
+                    statusEl.className = 'alert alert-success';
+                    
+                    detailedStatusEl.innerHTML = `
+                        <p><strong>Status:</strong> ${data.status}</p>
+                        <p><strong>Timestamp:</strong> ${new Date(data.timestamp).toLocaleString()}</p>
+                        <p><strong>API Base:</strong> ${API_BASE}</p>
+                    `;
+                } else {
+                    throw new Error('Server responded with error');
+                }
+            } catch (error) {
+                const statusEl = document.getElementById('server-status');
+                statusEl.innerHTML = '<span class="status-indicator status-offline"></span>Server Offline';
+                statusEl.className = 'alert alert-error';
+                
+                document.getElementById('detailed-status').innerHTML = `
+                    <p><strong>Error:</strong> ${error.message}</p>
+                    <p><strong>API Base:</strong> ${API_BASE}</p>
+                `;
+            }
+        }
+
+        async function handleLogin(event) {
+            event.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password }),
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    currentToken = data.token;
+                    localStorage.setItem('authToken', currentToken);
+                    showUserSession(data.user);
+                    showMessage('Login successful!');
+                } else {
+                    showMessage(data.error || 'Login failed', 'error');
+                }
+            } catch (error) {
+                showMessage('Network error: ' + error.message, 'error');
+            }
+        }
+
+        async function validateToken() {
+            if (!currentToken) return;
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/validate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ token: currentToken }),
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showUserSession(data.user);
+                } else {
+                    localStorage.removeItem('authToken');
+                    currentToken = null;
+                }
+            } catch (error) {
+                console.error('Token validation failed:', error);
+            }
+        }
+
+        function showUserSession(user) {
+            const sessionEl = document.getElementById('user-session');
+            const detailsEl = document.getElementById('session-details');
+            
+            detailsEl.innerHTML = `
+                <p><strong>Username:</strong> ${user.username}</p>
+                <p><strong>Access Type:</strong> ${user.accessType}</p>
+                <p><strong>Usage:</strong> ${user.usageCount}/${user.maxUsage || '∞'}</p>
+                ${user.expiresAt ? `<p><strong>Expires:</strong> ${new Date(user.expiresAt).toLocaleDateString()}</p>` : ''}
+            `;
+            
+            sessionEl.classList.remove('hidden');
+            document.querySelector('#login-tab form').style.display = 'none';
+        }
+
+        async function handleLogout() {
+            try {
+                await fetch(`${API_BASE}/api/auth/logout`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ token: currentToken }),
+                });
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+            
+            localStorage.removeItem('authToken');
+            currentToken = null;
+            document.getElementById('user-session').classList.add('hidden');
+            document.querySelector('#login-tab form').style.display = 'block';
+            showMessage('Logged out successfully');
+        }
+
+        function adminLogin() {
+            const token = document.getElementById('admin-token').value;
+            if (token) {
+                adminToken = token;
+                localStorage.setItem('adminToken', adminToken);
+                document.getElementById('admin-login').classList.add('hidden');
+                document.getElementById('admin-panel').classList.remove('hidden');
+                showMessage('Admin access granted');
+            }
+        }
+
+        async function createUser() {
+            const username = document.getElementById('new-username').value;
+            const password = document.getElementById('new-password').value;
+            const accessType = document.getElementById('access-type').value;
+            const maxUsage = document.getElementById('max-usage').value;
+            
+            if (!username || !password) {
+                showMessage('Username and password required', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/users`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${adminToken}`,
+                    },
+                    body: JSON.stringify({
+                        username,
+                        password,
+                        accessType,
+                        maxUsage: parseInt(maxUsage)
+                    }),
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showMessage('User created successfully');
+                    // Clear form
+                    document.getElementById('new-username').value = '';
+                    document.getElementById('new-password').value = '';
+                } else {
+                    showMessage(data.error || 'Failed to create user', 'error');
+                }
+            } catch (error) {
+                showMessage('Network error: ' + error.message, 'error');
+            }
+        }
+
+        async function loadUsers() {
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/users`, {
+                    headers: {
+                        'Authorization': `Bearer ${adminToken}`,
+                    },
+                });
+                
+                const users = await response.json();
+                
+                if (response.ok) {
+                    const dataEl = document.getElementById('admin-data');
+                    let html = '<h4>Users</h4><div style="text-align: left;">';
+                    
+                    Object.entries(users).forEach(([username, user]) => {
+                        html += `
+                            <div style="border: 1px solid #ddd; margin: 10px 0; padding: 10px; border-radius: 5px;">
+                                <strong>${username}</strong> 
+                                <span style="color: ${user.active ? 'green' : 'red'};">
+                                    ${user.active ? '●' : '○'}
+                                </span><br>
+                                Type: ${user.accessType} | Usage: ${user.usageCount}/${user.maxUsage || '∞'}<br>
+                                Created: ${new Date(user.createdAt).toLocaleDateString()}<br>
+                                Active Session: ${user.hasActiveSession ? 'Yes' : 'No'}
+                            </div>
+                        `;
+                    });
+                    
+                    html += '</div>';
+                    dataEl.innerHTML = html;
+                } else {
+                    showMessage('Failed to load users', 'error');
+                }
+            } catch (error) {
+                showMessage('Network error: ' + error.message, 'error');
+            }
+        }
+
+        async function loadLogs() {
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/logs?limit=20`, {
+                    headers: {
+                        'Authorization': `Bearer ${adminToken}`,
+                    },
+                });
+                
+                const logs = await response.json();
+                
+                if (response.ok) {
+                    const dataEl = document.getElementById('admin-data');
+                    let html = '<h4>Recent Access Logs</h4><div style="text-align: left; font-size: 12px;">';
+                    
+                    logs.forEach(log => {
+                        html += `
+                            <div style="border-bottom: 1px solid #eee; padding: 5px 0;">
+                                <strong>${log.username}</strong> - ${log.action} 
+                                <span style="color: ${log.success ? 'green' : 'red'};">
+                                    ${log.success ? '✓' : '✗'}
+                                </span><br>
+                                ${new Date(log.timestamp).toLocaleString()} | IP: ${log.ip}
+                            </div>
+                        `;
+                    });
+                    
+                    html += '</div>';
+                    dataEl.innerHTML = html;
+                } else {
+                    showMessage('Failed to load logs', 'error');
+                }
+            } catch (error) {
+                showMessage('Network error: ' + error.message, 'error');
+            }
+        }
+    </script>
+</body>
+</html>
