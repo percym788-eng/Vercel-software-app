@@ -1,4 +1,4 @@
-vercel.json:
+
 {
   "version": 2,
   "routes": [
@@ -13,7 +13,6 @@ vercel.json:
   ]
 }
 
-package.json:
 {
   "name": "auth-server-vercel",
   "version": "1.0.0",
