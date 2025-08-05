@@ -1,135 +1,154 @@
-// api/admin/[...admin].js
-const crypto = require('crypto');
-const fs = require('fs');
-const path = require('path');
+// /api/admin-auth.js - Admin authentication endpoint with RSA verification
+import crypto from 'crypto';
 
-const USERS_DB = path.join('/tmp', 'server-users.json');
-const SESSIONS_DB = path.join('/tmp', 'active-sessions.json');
-const LOGS_DB = path.join('/tmp', 'access-logs.json');
-const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'admin-secret-key-change-this';
-
-function initDatabases() {
-  if (!fs.existsSync(USERS_DB)) {
-    fs.writeFileSync(USERS_DB, JSON.stringify({}, null, 2));
-  }
-  if (!fs.existsSync(SESSIONS_DB)) {
-    fs.writeFileSync(SESSIONS_DB, JSON.stringify({}, null, 2));
-  }
-  if (!fs.existsSync(LOGS_DB)) {
-    fs.writeFileSync(LOGS_DB, JSON.stringify([], null, 2));
-  }
-}
-
-function loadDatabase(dbPath) {
-  try {
-    return JSON.parse(fs.readFileSync(dbPath, 'utf8'));
-  } catch (error) {
-    return dbPath === LOGS_DB ? [] : {};
-  }
-}
-
-function saveDatabase(dbPath, data) {
-  fs.writeFileSync(dbPath, JSON.stringify(data, null, 2));
-}
-
-function hashPassword(password) {
-  return crypto.createHash('sha256').update(password).digest('hex');
-}
-
-function requireAdmin(req, res) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || authHeader !== `Bearer ${ADMIN_TOKEN}`) {
-    res.status(401).json({ error: 'Admin access required' });
-    return false;
-  }
-  return true;
-}
-
-export default function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
-  }
-
-  if (!requireAdmin(req, res)) return;
-
-  initDatabases();
-  
-  const { admin } = req.query;
-  const action = admin[0];
-
-  try {
-    switch (action) {
-      case 'users':
-        if (req.method === 'GET') {
-          handleGetUsers(req, res);
-        } else if (req.method === 'POST') {
-          handleCreateUser(req, res);
-        }
-        break;
-      case 'logs':
-        handleGetLogs(req, res);
-        break;
-      default:
-        res.status(404).json({ error: 'Admin endpoint not found' });
-    }
-  } catch (error) {
-    console.error('Admin API Error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-}
-
-function handleGetUsers(req, res) {
-  const users = loadDatabase(USERS_DB);
-  const sessions = loadDatabase(SESSIONS_DB);
-  
-  const usersWithSessions = {};
-  Object.keys(users).forEach(username => {
-    usersWithSessions[username] = { ...users[username] };
-    delete usersWithSessions[username].passwordHash;
+// Admin security configuration
+const ADMIN_SECURITY = {
+    // Authorized MAC addresses for admin access
+    ALLOWED_MAC_ADDRESSES: ['88:66:5a:46:b0:d0'], // Replace with your actual MAC
     
-    usersWithSessions[username].hasActiveSession = Object.values(sessions)
-      .some(session => session.username === username);
-  });
-  
-  res.json(usersWithSessions);
+    // RSA Public Key for signature verification
+    ADMIN_RSA_PUBLIC_KEY: `-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0Dojkpn9uLlpJGfMnKJ/
+G8DNP0F4uq78lrbCnZvKWFQmf3Mj3LoRWZPga9MYmSvfIbLJmaL/PMslxbDyXvI7
+CIGCwPtZVqeE6S6UJ/EeD0EpJCNetWUOPOZ/Vqo+WrY/TaXQix/IzFNKXMj0Ul43
+shU/BWM5lnPoxGtu2g0Z3hmhqDeHFQKG23V68K7d1xHhJkmlCVkSgQs+Oe/rkAHL
+4g7vd1ViJ33dF4wKiWLKTmvcYOJXbNPE/RXwvb48qtPWoy2R1E0Jg52KNEUG2hDx
+wmWRcyAv2bALB5G0EANaYQCieOethyykt2lo7rV7fy6jtxE+HoiGE0kLAmlbsoHc
+wQIDAQAB
+-----END PUBLIC KEY-----`
+};
+
+// In-memory storage for admin sessions
+let adminSessions = {};
+let adminLoginHistory = [];
+
+function logSecurityEvent(event, details) {
+    const logEntry = {
+        timestamp: new Date().toISOString(),
+        event,
+        details
+    };
+    
+    adminLoginHistory.push(logEntry);
+    
+    // Keep only last 500 admin entries
+    if (adminLoginHistory.length > 500) {
+        adminLoginHistory = adminLoginHistory.slice(-500);
+    }
+    
+    console.log(`[ADMIN] [${logEntry.timestamp}] ${event}: ${details}`);
 }
 
-function handleCreateUser(req, res) {
-  const { username, password, accessType, maxUsage, expiresAt } = req.body;
-  
-  if (!username || !password) {
-    return res.status(400).json({ error: 'Username and password required' });
-  }
-  
-  const users = loadDatabase(USERS_DB);
-  
-  if (users[username]) {
-    return res.status(409).json({ error: 'User already exists' });
-  }
-  
-  users[username] = {
-    passwordHash: hashPassword(password),
-    accessType: accessType || 'trial',
-    maxUsage: maxUsage || 1,
-    usageCount: 0,
-    active: true,
-    createdAt: new Date().toISOString(),
-    expiresAt: expiresAt || null
-  };
-  
-  saveDatabase(USERS_DB, users);
-  
-  res.json({ success: true, message: 'User created successfully' });
+function validateMacAddress(deviceInfo) {
+    const deviceMacs = deviceInfo.macAddresses || [];
+    return ADMIN_SECURITY.ALLOWED_MAC_ADDRESSES.some(allowedMac => 
+        deviceMacs.includes(allowedMac.toLowerCase())
+    );
 }
 
-function handleGetLogs(req, res) {
-  const logs = loadDatabase(LOGS_DB);
-  const limit = parseInt(req.query.limit) || 100;
-  
-  res.json(logs.slice(-limit).reverse());
+function verifyRSASignature(challenge, signature) {
+    try {
+        const publicKey = crypto.createPublicKey({
+            key: ADMIN_SECURITY.ADMIN_RSA_PUBLIC_KEY,
+            format: 'pem',
+            type: 'spki'
+        });
+        
+        return crypto.verify('sha256', Buffer.from(challenge), publicKey, Buffer.from(signature, 'base64'));
+    } catch (error) {
+        console.error('RSA verification error:', error);
+        return false;
+    }
+}
+
+function generateAdminToken() {
+    return 'admin_' + crypto.randomBytes(32).toString('base64url');
+}
+
+export default async function handler(req, res) {
+    // Set CORS headers
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    
+    // Handle preflight requests
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
+    
+    if (req.method !== 'POST') {
+        return res.status(405).json({ success: false, message: 'Method not allowed' });
+    }
+    
+    try {
+        const { challenge, signature, deviceInfo } = req.body;
+        
+        if (!challenge || !signature || !deviceInfo) {
+            logSecurityEvent('ADMIN_AUTH_FAILED', 'Missing challenge, signature, or device info');
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Missing challenge, signature, or device information' 
+            });
+        }
+        
+        // Step 1: Validate MAC address
+        if (!validateMacAddress(deviceInfo)) {
+            logSecurityEvent('ADMIN_AUTH_FAILED', `Unauthorized MAC: ${deviceInfo.macAddresses?.join(', ')}`);
+            return res.status(403).json({ 
+                success: false, 
+                message: 'Unauthorized device - MAC address not allowed' 
+            });
+        }
+        
+        logSecurityEvent('ADMIN_MAC_VALIDATED', `Device: ${deviceInfo.hostname}`);
+        
+        // Step 2: Verify RSA signature
+        if (!verifyRSASignature(challenge, signature)) {
+            logSecurityEvent('ADMIN_AUTH_FAILED', 'Invalid RSA signature');
+            return res.status(403).json({ 
+                success: false, 
+                message: 'Invalid RSA signature' 
+            });
+        }
+        
+        logSecurityEvent('ADMIN_RSA_VALIDATED', 'RSA signature verified');
+        
+        // Generate admin session token
+        const adminToken = generateAdminToken();
+        const sessionId = crypto.randomBytes(16).toString('hex');
+        
+        // Store admin session
+        adminSessions[sessionId] = {
+            token: adminToken,
+            deviceInfo: deviceInfo,
+            loginTime: new Date().toISOString(),
+            lastActivity: new Date().toISOString()
+        };
+        
+        logSecurityEvent('ADMIN_ACCESS_GRANTED', `Session: ${sessionId}, Device: ${deviceInfo.fingerprint?.substring(0, 16)}...`);
+        
+        return res.status(200).json({
+            success: true,
+            message: 'Admin authentication successful',
+            accessType: 'admin',
+            adminToken: adminToken,
+            sessionId: sessionId,
+            privileges: [
+                'user_management',
+                'system_control',
+                'security_logs',
+                'device_management',
+                'full_access'
+            ]
+        });
+        
+    } catch (error) {
+        console.error('Admin authentication error:', error);
+        logSecurityEvent('ADMIN_AUTH_ERROR', error.message);
+        
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error'
+        });
+    }
 }
